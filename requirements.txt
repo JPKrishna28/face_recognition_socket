@@ -4,3 +4,4 @@ face_recognition
 numpy
 opencv-python
 flask-socketio
+gunicorn
