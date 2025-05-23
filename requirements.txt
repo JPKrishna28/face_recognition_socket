@@ -1,0 +1,6 @@
+flask
+werkzeug
+face_recognition
+numpy
+opencv-python
+flask-socketio

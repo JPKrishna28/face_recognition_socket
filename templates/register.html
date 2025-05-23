@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Registration Result</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-user-check"></i> Face Registration Result</h1>
+
+        <div class="card result-card">
+            {% if error %}
+                <div class="error">
+                    <i class="fas fa-exclamation-circle"></i> {{ error }}
+                </div>
+            {% endif %}
+
+            {% if success %}
+                <div class="success">
+                    <i class="fas fa-check-circle"></i> Successfully registered <strong>{{ name }}</strong>!
+                </div>
+            {% endif %}
+
+            {% if image_path %}
+                <div class="image-container">
+                    <img src="{{ url_for('static', filename='uploads/' + image_path.split('/')[-1]) }}" alt="Uploaded Image">
+                </div>
+            {% endif %}
+
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="/" class="button"><i class="fas fa-home"></i> Back to Home</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

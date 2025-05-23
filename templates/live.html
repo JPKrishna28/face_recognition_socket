@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Face Recognition</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-video"></i> Live Face Recognition</h1>
+
+        <div class="card">
+            <div class="video-container">
+                <div class="camera-streams">
+                    <div>
+                        <h3><i class="fas fa-camera"></i> Camera Feed</h3>
+                        <video id="videoElement" width="400" height="300" autoplay></video>
+                        <canvas id="canvasElement" width="400" height="300" style="display: none;"></canvas>
+                    </div>
+                    <div>
+                        <h3><i class="fas fa-eye"></i> Recognition Feed</h3>
+                        <img id="processedImage" width="400" height="300" src="">
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="startButton" class="button"><i class="fas fa-play"></i> Start Camera</button>
+                <button id="stopButton" class="button button-danger" disabled><i class="fas fa-stop"></i> Stop Camera</button>
+            </div>
+
+            <div id="resultsContainer" class="results-container">
+                <h3><i class="fas fa-list"></i> Recognition Results:</h3>
+                <div id="recognitionResults"></div>
+            </div>
+
+            <div id="messageContainer" class="message-container"></div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="/" class="button"><i class="fas fa-home"></i> Back to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const videoElement = document.getElementById('videoElement');
+            const canvasElement = document.getElementById('canvasElement');
+            const processedImage = document.getElementById('processedImage');
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            const resultsContainer = document.getElementById('recognitionResults');
+            const messageContainer = document.getElementById('messageContainer');
+
+            const context = canvasElement.getContext('2d');
+            let stream = null;
+            let socket = null;
+            let isStreaming = false;
+            let processingInterval = null;
+
+            // Connect to WebSocket
+            function connectWebSocket() {
+                socket = io.connect(window.location.protocol + '//' + document.domain + ':' + location.port);
+
+                socket.on('connect', function() {
+                    console.log('Connected to server');
+                });
+
+                socket.on('disconnect', function() {
+                    console.log('Disconnected from server');
+                    stopStreaming();
+                });
+
+                socket.on('response_back', function(data) {
+                    if (data.message) {
+                        // Display message
+                        messageContainer.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> ${data.message}</div>`;
+                        return;
+                    }
+
+                    // Display processed image
+                    processedImage.src = data.image;
+
+                    // Display results
+                    resultsContainer.innerHTML = '';
+                    data.results.forEach(result => {
+                        const resultDiv = document.createElement('div');
+                        resultDiv.classList.add(result.is_match ? 'success' : 'warning');
+                        resultDiv.innerHTML = `${result.is_match ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-question-circle"></i>'} ${result.name}`;
+                        resultsContainer.appendChild(resultDiv);
+                    });
+
+                    if (data.results.length === 0) {
+                        const noFaceDiv = document.createElement('div');
+                        noFaceDiv.classList.add('info');
+                        noFaceDiv.innerHTML = '<i class="fas fa-info-circle"></i> No faces detected';
+                        resultsContainer.appendChild(noFaceDiv);
+                    }
+                });
+            }
+
+            // Start camera stream
+            startButton.addEventListener('click', function() {
+                messageContainer.innerHTML = '<div class="info"><i class="fas fa-spinner fa-spin"></i> Accessing camera...</div>';
+
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(function(mediaStream) {
+                            stream = mediaStream;
+                            videoElement.srcObject = stream;
+                            videoElement.play();
+
+                            startButton.disabled = true;
+                            stopButton.disabled = false;
+
+                            // Connect WebSocket after camera starts
+                            connectWebSocket();
+                            messageContainer.innerHTML = '<div class="success"><i class="fas fa-check-circle"></i> Camera connected successfully</div>';
+
+                            // Start processing frames
+                            isStreaming = true;
+                            processingInterval = setInterval(processFrame, 200); // Process every 200ms
+                        })
+                        .catch(function(err) {
+                            console.error("Error accessing camera:", err);
+                            messageContainer.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> Error accessing camera: ${err.message}</div>`;
+                        });
+                } else {
+                    messageContainer.innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i> Your browser does not support camera access</div>';
+                }
+            });
+
+            // Stop camera stream
+            stopButton.addEventListener('click', function() {
+                stopStreaming();
+                messageContainer.innerHTML = '<div class="info"><i class="fas fa-info-circle"></i> Camera stopped</div>';
+            });
+
+            // Process video frame
+            function processFrame() {
+                if (!isStreaming || !socket) return;
+
+                // Draw video frame to canvas
+                context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+
+                // Get the image data as base64
+                const imageData = canvasElement.toDataURL('image/jpeg', 0.8);
+
+                // Send to server for processing
+                socket.emit('image', imageData);
+            }
+
+            // Stop streaming
+            function stopStreaming() {
+                isStreaming = false;
+
+                if (processingInterval) {
+                    clearInterval(processingInterval);
+                    processingInterval = null;
+                }
+
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+
+                if (socket) {
+                    socket.disconnect();
+                    socket = null;
+                }
+
+                videoElement.srcObject = null;
+                processedImage.src = '';
+                resultsContainer.innerHTML = '';
+
+                startButton.disabled = false;
+                stopButton.disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>

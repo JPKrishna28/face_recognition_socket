@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition Result</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-search"></i> Face Recognition Result</h1>
+
+        <div class="card result-card">
+            {% if error %}
+                <div class="error">
+                    <i class="fas fa-exclamation-circle"></i> {{ error }}
+                </div>
+            {% endif %}
+
+            {% if matches %}
+                <div class="success">
+                    <h2><i class="fas fa-list-alt"></i> Recognition Results:</h2>
+                    {% for match in matches %}
+                        <p>
+                            {% if match.is_match %}
+                                <i class="fas fa-check-circle"></i> Found: <strong>{{ match.name }}</strong>
+                            {% else %}
+                                <i class="fas fa-question-circle"></i> Unknown face detected
+                            {% endif %}
+                        </p>
+                    {% endfor %}
+                </div>
+
+                <div class="image-container">
+                    <h3><i class="fas fa-image"></i> Result:</h3>
+                    <img src="{{ url_for('static', filename='uploads/' + result_path.split('/')[-1]) }}" alt="Result Image">
+                </div>
+            {% endif %}
+
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="/" class="button"><i class="fas fa-home"></i> Back to Home</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
