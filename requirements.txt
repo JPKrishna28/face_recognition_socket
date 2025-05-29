@@ -6,3 +6,5 @@ opencv-python
 flask-socketio
 gunicorn
 cmake
+scikit-image
+dlib

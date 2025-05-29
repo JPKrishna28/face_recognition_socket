@@ -274,6 +274,135 @@ video, img {
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
+/* Add these new styles to your existing CSS file */
+
+/* Liveness detection styles */
+.liveness-container {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #f9fafb;
+    border-radius: 12px;
+    border: 1px solid #e1e8ed;
+}
+
+.liveness-status {
+    margin: 15px 0;
+}
+
+.liveness-indicator {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.liveness-indicator .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 10px;
+    animation: pulse 1.5s infinite;
+}
+
+.liveness-indicator.live {
+    background-color: #e8f8f3;
+    color: #27ae60;
+}
+
+.liveness-indicator.live .dot {
+    background-color: #27ae60;
+}
+
+.liveness-indicator.fake {
+    background-color: #fdecea;
+    color: #e74c3c;
+}
+
+.liveness-indicator.fake .dot {
+    background-color: #e74c3c;
+}
+
+.liveness-indicator.analyzing {
+    background-color: #fef5e7;
+    color: #f39c12;
+}
+
+.liveness-indicator.analyzing .dot {
+    background-color: #f39c12;
+}
+
+.liveness-progress-container {
+    height: 8px;
+    background-color: #e1e8ed;
+    border-radius: 4px;
+    margin: 15px 0;
+    overflow: hidden;
+}
+
+.liveness-progress {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #f39c12, #27ae60);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.liveness-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.liveness-check {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px;
+    border-radius: 8px;
+    background-color: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e1e8ed;
+}
+
+.button-warning {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+.button-warning:hover {
+    background: linear-gradient(135deg, #e67e22, #d35400);
+}
+
+.text-success {
+    color: #27ae60;
+}
+
+.text-danger {
+    color: #e74c3c;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.2);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Additional responsive styles */
+@media (max-width: 768px) {
+    .liveness-details {
+        flex-direction: column;
+    }
+}
+
 /* Added animations */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
@@ -299,6 +428,7 @@ video, img {
     }
 
     h2 {
+
         font-size: 1.5rem;
     }
 

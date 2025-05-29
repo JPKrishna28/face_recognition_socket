@@ -30,6 +30,30 @@
             <div class="controls">
                 <button id="startButton" class="button"><i class="fas fa-play"></i> Start Camera</button>
                 <button id="stopButton" class="button button-danger" disabled><i class="fas fa-stop"></i> Stop Camera</button>
+                <button id="resetButton" class="button button-warning" disabled><i class="fas fa-redo"></i> Reset Liveness</button>
+            </div>
+
+            <div id="livenessContainer" class="liveness-container">
+                <h3><i class="fas fa-heartbeat"></i> Liveness Detection:</h3>
+                <div id="livenessStatus" class="liveness-status">
+                    <div class="liveness-indicator analyzing">
+                        <span class="dot"></span> Waiting for camera...
+                    </div>
+                </div>
+                <div class="liveness-progress-container">
+                    <div id="livenessProgress" class="liveness-progress"></div>
+                </div>
+                <div id="livenessDetails" class="liveness-details">
+                    <div class="liveness-check">
+                        <i class="fas fa-question-circle"></i> Blink Detection: <span id="blinkStatus">Waiting...</span>
+                    </div>
+                    <div class="liveness-check">
+                        <i class="fas fa-question-circle"></i> Texture Analysis: <span id="textureStatus">Waiting...</span>
+                    </div>
+                    <div class="liveness-check">
+                        <i class="fas fa-question-circle"></i> Motion Analysis: <span id="motionStatus">Waiting...</span>
+                    </div>
+                </div>
             </div>
 
             <div id="resultsContainer" class="results-container">
@@ -52,15 +76,26 @@
             const processedImage = document.getElementById('processedImage');
             const startButton = document.getElementById('startButton');
             const stopButton = document.getElementById('stopButton');
+            const resetButton = document.getElementById('resetButton');
             const resultsContainer = document.getElementById('recognitionResults');
             const messageContainer = document.getElementById('messageContainer');
+            const livenessStatus = document.getElementById('livenessStatus');
+            const livenessProgress = document.getElementById('livenessProgress');
+            const blinkStatus = document.getElementById('blinkStatus');
+            const textureStatus = document.getElementById('textureStatus');
+            const motionStatus = document.getElementById('motionStatus');
 
             const context = canvasElement.getContext('2d');
             let stream = null;
             let socket = null;
             let isStreaming = false;
             let processingInterval = null;
-
+            // Add this helper function to your script
+            function parseBoolString(value) {
+                if (value === "true") return true;
+                if (value === "false") return false;
+                return value;
+            }
             // Connect to WebSocket
             function connectWebSocket() {
                 socket = io.connect(window.location.protocol + '//' + document.domain + ':' + location.port);
@@ -74,6 +109,24 @@
                     stopStreaming();
                 });
 
+                socket.on('liveness_reset', function(data) {
+                    messageContainer.innerHTML = `<div class="info"><i class="fas fa-info-circle"></i> ${data.message}</div>`;
+                    blinkStatus.innerHTML = 'Waiting...';
+                    textureStatus.innerHTML = 'Waiting...';
+                    motionStatus.innerHTML = 'Waiting...';
+                    livenessStatus.innerHTML = `
+                        <div class="liveness-indicator analyzing">
+                            <span class="dot"></span> Analyzing...
+                        </div>
+                    `;
+                    livenessProgress.style.width = '0%';
+
+                    // Reset icon classes
+                    blinkStatus.previousElementSibling.className = 'fas fa-question-circle';
+                    textureStatus.previousElementSibling.className = 'fas fa-question-circle';
+                    motionStatus.previousElementSibling.className = 'fas fa-question-circle';
+                });
+
                 socket.on('response_back', function(data) {
                     if (data.message) {
                         // Display message
@@ -84,12 +137,44 @@
                     // Display processed image
                     processedImage.src = data.image;
 
+                    // Update liveness status
+                    if (data.liveness_result) {
+                        // Convert string booleans to actual booleans
+                        const livenessResult = {
+                            ...data.liveness_result,
+                            is_live: parseBoolString(data.liveness_result.is_live),
+                            blink_detected: parseBoolString(data.liveness_result.blink_detected),
+                            texture_real: parseBoolString(data.liveness_result.texture_real),
+                            natural_movement: parseBoolString(data.liveness_result.natural_movement),
+                            confidence: parseFloat(data.liveness_result.confidence)
+                        };
+                        updateLivenessUI(livenessResult);
+                    }
+
                     // Display results
                     resultsContainer.innerHTML = '';
                     data.results.forEach(result => {
                         const resultDiv = document.createElement('div');
-                        resultDiv.classList.add(result.is_match ? 'success' : 'warning');
-                        resultDiv.innerHTML = `${result.is_match ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-question-circle"></i>'} ${result.name}`;
+
+                        // Parse string booleans to actual booleans
+                        const isMatch = parseBoolString(result.is_match);
+                        const isLive = parseBoolString(result.is_live);
+
+                        // Set class based on match and liveness
+                        if (isMatch && isLive === true) {
+                            resultDiv.classList.add('success');
+                            resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${result.name} (Real)`;
+                        } else if (isMatch && isLive === false) {
+                            resultDiv.classList.add('warning');
+                            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${result.name} (Fake)`;
+                        } else if (isMatch && isLive === null) {
+                            resultDiv.classList.add('info');
+                            resultDiv.innerHTML = `<i class="fas fa-question-circle"></i> ${result.name} (Analyzing...)`;
+                        } else {
+                            resultDiv.classList.add('warning');
+                            resultDiv.innerHTML = `<i class="fas fa-question-circle"></i> Unknown`;
+                        }
+
                         resultsContainer.appendChild(resultDiv);
                     });
 
@@ -100,6 +185,58 @@
                         resultsContainer.appendChild(noFaceDiv);
                     }
                 });
+            }
+
+            function updateLivenessUI(livenessResult) {
+                // Update confidence progress bar
+                const confidence = livenessResult.confidence * 100;
+                livenessProgress.style.width = `${confidence}%`;
+
+                // Update indicator
+                if (livenessResult.is_live === true) {
+                    livenessStatus.innerHTML = `
+                        <div class="liveness-indicator live">
+                            <span class="dot"></span> Real Person Detected (${confidence.toFixed(1)}%)
+                        </div>
+                    `;
+                } else if (livenessResult.is_live === false) {
+                    livenessStatus.innerHTML = `
+                        <div class="liveness-indicator fake">
+                            <span class="dot"></span> Fake Detected (${confidence.toFixed(1)}%)
+                        </div>
+                    `;
+                } else {
+                    livenessStatus.innerHTML = `
+                        <div class="liveness-indicator analyzing">
+                            <span class="dot"></span> Analyzing... (${confidence.toFixed(1)}%)
+                        </div>
+                    `;
+                }
+
+                // Update individual checks
+                if (livenessResult.blink_detected) {
+                    blinkStatus.innerHTML = 'Detected';
+                    blinkStatus.previousElementSibling.className = 'fas fa-check-circle text-success';
+                } else {
+                    blinkStatus.innerHTML = 'Not Detected';
+                    blinkStatus.previousElementSibling.className = 'fas fa-times-circle text-danger';
+                }
+
+                if (livenessResult.texture_real) {
+                    textureStatus.innerHTML = 'Real Texture';
+                    textureStatus.previousElementSibling.className = 'fas fa-check-circle text-success';
+                } else {
+                    textureStatus.innerHTML = 'Suspicious Texture';
+                    textureStatus.previousElementSibling.className = 'fas fa-times-circle text-danger';
+                }
+
+                if (livenessResult.natural_movement) {
+                    motionStatus.innerHTML = 'Natural Movement';
+                    motionStatus.previousElementSibling.className = 'fas fa-check-circle text-success';
+                } else {
+                    motionStatus.innerHTML = 'Unnatural Movement';
+                    motionStatus.previousElementSibling.className = 'fas fa-times-circle text-danger';
+                }
             }
 
             // Start camera stream
@@ -115,6 +252,7 @@
 
                             startButton.disabled = true;
                             stopButton.disabled = false;
+                            resetButton.disabled = false;
 
                             // Connect WebSocket after camera starts
                             connectWebSocket();
@@ -137,6 +275,13 @@
             stopButton.addEventListener('click', function() {
                 stopStreaming();
                 messageContainer.innerHTML = '<div class="info"><i class="fas fa-info-circle"></i> Camera stopped</div>';
+            });
+
+            // Reset liveness detection
+            resetButton.addEventListener('click', function() {
+                if (socket) {
+                    socket.emit('reset_liveness');
+                }
             });
 
             // Process video frame
@@ -178,6 +323,23 @@
 
                 startButton.disabled = false;
                 stopButton.disabled = true;
+                resetButton.disabled = true;
+
+                // Reset liveness UI
+                livenessStatus.innerHTML = `
+                    <div class="liveness-indicator analyzing">
+                        <span class="dot"></span> Waiting for camera...
+                    </div>
+                `;
+                livenessProgress.style.width = '0%';
+                blinkStatus.innerHTML = 'Waiting...';
+                textureStatus.innerHTML = 'Waiting...';
+                motionStatus.innerHTML = 'Waiting...';
+
+                // Reset icon classes
+                blinkStatus.previousElementSibling.className = 'fas fa-question-circle';
+                textureStatus.previousElementSibling.className = 'fas fa-question-circle';
+                motionStatus.previousElementSibling.className = 'fas fa-question-circle';
             }
         });
     </script>

@@ -38,12 +38,47 @@
         </div>
 
         <div class="card">
-            <h2><i class="fas fa-video"></i> Live Camera Recognition</h2>
-            <p>Use your webcam for real-time face recognition</p>
+            <h2><i class="fas fa-video"></i> Live Camera Recognition with Liveness Detection</h2>
+            <p>Use your webcam for real-time face recognition with anti-spoofing technology</p>
+            <div class="feature-list">
+                <div class="feature">
+                    <i class="fas fa-eye"></i> Blink Detection
+                </div>
+                <div class="feature">
+                    <i class="fas fa-fingerprint"></i> Texture Analysis
+                </div>
+                <div class="feature">
+                    <i class="fas fa-running"></i> Motion Analysis
+                </div>
+            </div>
             <div style="text-align: center; margin-top: 20px;">
                 <a href="/live" class="button"><i class="fas fa-play-circle"></i> Start Live Recognition</a>
             </div>
         </div>
     </div>
+
+    <style>
+        .feature-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+
+        .feature {
+            background-color: #f9fafb;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e1e8ed;
+        }
+
+        .feature i {
+            color: #3498db;
+            margin-right: 5px;
+        }
+    </style>
 </body>
 </html>
